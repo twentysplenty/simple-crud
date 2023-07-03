@@ -143,6 +143,10 @@ const server = http.createServer((req, res) => {
 			res.end();
 		}
 	}
+	else {
+		res.writeHead(404, "No endpoit found");
+		res.end();
+	}
 
 })
 
