@@ -7,26 +7,28 @@ var mockDB = /** @class */ (function () {
     function mockDB() {
         var _this = this;
         this.addUser = function (user) {
+            if (user.uuid === undefined)
+                user.uuid = (0, uuid_1.v4)();
             if (_this.isUser(user))
                 _this.users.push(user);
+            return user.uuid;
         };
         this.getUsers = function () {
             return _this.users;
         };
         this.getUser = function (uuid) {
-            if ((0, uuid_1.validate)(uuid))
-                return _this.users.find(function (user) { return user.uuid === uuid; }); //else
+            return ((0, uuid_1.validate)(uuid)) ? _this.users.find(function (user) { return user.uuid === uuid; }) : undefined;
         };
         this.updateUser = function (uuid, updateUser) {
             var user = _this.getUser(uuid);
             if (user) {
-                user.username = updateUser.username;
-                user.age = updateUser.age;
-                user.hobbies = updateUser.hobbies;
+                user.username = updateUser.username ? updateUser.username : user.username;
+                user.age = updateUser.age ? updateUser.age : user.age;
+                user.hobbies = updateUser.hobbies ? updateUser.hobbies : user.hobbies;
             }
         };
-        this.deleteUser = function (name) {
-            var index = _this.users.findIndex(function (user) { return user.username === name; });
+        this.deleteUser = function (uuid) {
+            var index = _this.users.findIndex(function (user) { return user.uuid === uuid; });
             if (index !== -1) {
                 _this.users.splice(index, 1);
             }
@@ -34,33 +36,109 @@ var mockDB = /** @class */ (function () {
         this.users = [];
     }
     mockDB.prototype.isUser = function (user) {
-        return (typeof (user.uuid) === "string")
-            && (typeof (user.username) === "string")
+        if ("uuid" in user && typeof user.uuid !== undefined)
+            return ((0, uuid_1.validate)(user.uuid))
+                && (typeof (user.username) === "string")
+                && (typeof (user.age) === "number")
+                && Array.isArray(user.hobbies);
+        return (typeof (user.username) === "string")
             && (typeof (user.age) === "number")
             && Array.isArray(user.hobbies);
     };
     return mockDB;
 }());
 var db = new mockDB();
-var newUser = { uuid: "3324d86f-2cfe-4518-bd3e-8ceb928eca5e", username: "A", age: 25, hobbies: ["cooking"] };
-if (db.isUser(newUser)) {
-    db.addUser(newUser);
-}
-else {
-    console.log("user format is invalid");
-}
-db.addUser({ uuid: "46da50e9-7b9f-4759-a690-8748b2a52b8d", username: "B", age: 25, hobbies: [] });
-db.addUser({ uuid: "061b191f-a7bc-414d-be14-38f984167f75", username: "C", age: 25, hobbies: [] });
-console.log(db.getUsers());
-db.updateUser("46da50e9-7b9f-4759-a690-8748b2a52b8d", { username: "newName", age: 100, hobbies: ["eating"] });
-db.deleteUser("061b191f-a7bc-414d-be14-38f984167f75");
-console.log(db.getUsers());
-console.log(db.getUser("46da50e9-7b9f-4759-a690-8748b2a52b8d"));
 var server = http.createServer(function (req, res) {
     var route = req.url.split("/").filter(function (element) { return element; });
-    if (req.url === "/api/users" && req.method === "GET") {
+    if (req.url === "/api/users"
+        && req.method === "GET") {
         res.writeHead(200, "Users access OK", { "Content-Type": "application/json" });
         res.end(JSON.stringify(db.getUsers()));
+    }
+    else if (route.length === 3
+        && route[0] === "api"
+        && route[1] === "users"
+        && req.method === "GET") {
+        var uuid = route[2];
+        if (!(0, uuid_1.validate)(uuid)) {
+            res.writeHead(400, "User id is invalid");
+        }
+        var user = db.getUser(uuid);
+        if (user) {
+            res.writeHead(200, "User access OK", { "Content-Type": "application/json" });
+            res.end(JSON.stringify(user));
+        }
+        else {
+            res.writeHead(404, "User with this id was not found");
+            res.end();
+        }
+    }
+    else if (req.url === "/api/users"
+        && req.method === "POST") {
+        var requestBody_1 = "";
+        req.on("data", function (chunk) {
+            requestBody_1 += chunk;
+        });
+        req.on("end", function () {
+            var reqBodyParsed = JSON.parse(requestBody_1);
+            if (db.isUser(reqBodyParsed)) {
+                var newUser = db.addUser(reqBodyParsed);
+                res.writeHead(201, "User created");
+                res.end(JSON.stringify(db.getUser(newUser)));
+            }
+            else {
+                res.writeHead(400, "User body does not contain required fields");
+                res.end();
+            }
+        });
+    }
+    else if (route.length === 3
+        && route[0] === "api"
+        && route[1] === "users"
+        && req.method === "PUT") {
+        var uuid_2 = route[2];
+        if (!(0, uuid_1.validate)(uuid_2)) {
+            res.writeHead(400, "User id is invalid");
+            res.end();
+        }
+        var user_1 = db.getUser(uuid_2);
+        if (user_1) {
+            var putRequestBody_1 = "";
+            req.on("data", function (chunk) {
+                putRequestBody_1 += chunk;
+            });
+            req.on("end", function () {
+                var updatedUser;
+                updatedUser = JSON.parse(putRequestBody_1);
+                db.updateUser(uuid_2, updatedUser);
+                res.writeHead(201, "User updated");
+                res.end(JSON.stringify(user_1));
+            });
+        }
+        else {
+            res.writeHead(404, "User with this id does not exist");
+            res.end();
+        }
+    }
+    else if (route.length === 3
+        && route[0] === "api"
+        && route[1] === "users"
+        && req.method === "DELETE") {
+        var uuid = route[2];
+        if (!(0, uuid_1.validate)(uuid)) {
+            res.writeHead(400, "User id is invalid");
+            res.end();
+        }
+        var user = db.getUser(uuid);
+        if (user) {
+            db.deleteUser(uuid);
+            res.writeHead(204, "Record was found and deleted");
+            res.end();
+        }
+        else {
+            res.writeHead(404, "User with this id does not exist");
+            res.end();
+        }
     }
 });
 server.listen(process.env.PORT, function () {

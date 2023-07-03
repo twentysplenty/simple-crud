@@ -6,6 +6,7 @@
   "scripts": {
     "start:dev": "ts-node-dev --respawn --transpile-only --dir dev index.ts",
     "start:build": "npx tsc --outDir ./dist/index.js && node ./dist/index.js",
+    "build": "npx tsc --outDir ./dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
