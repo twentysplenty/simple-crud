@@ -33,7 +33,7 @@ export class mockDB {
 	}
 	isUser(user: User): user is User {
 		if ("uuid" in user && typeof user.uuid !== undefined)
-			return (validate((user as User).uuid))
+			return (validate((user as User).uuid!))
 				&& (typeof ((user as User).username) === "string")
 				&& (typeof ((user as User).age) === "number")
 				&& Array.isArray((user as User).hobbies)
