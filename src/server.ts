@@ -3,12 +3,15 @@ import { validate } from "uuid";
 import { mockDB } from './db';
 import { User } from "./types";
 
-export const startSever = (port: string) => {
+export const startServer = (port: string) => {
 	const db = new mockDB();
 
 	const server = http.createServer((req, res) => {
-		const route = req.url.split("/").filter(element => element);
-		if (req.url === "/api/users"
+		if (!req.url) {
+			res.writeHead(404, "Request error");
+		}
+		const route: string[] = req.url!.split("/").filter(element => element);
+		if (req.url && req.url === "/api/users"
 			&& req.method === "GET") {
 			res.writeHead(200, "Users access OK", { "Content-Type": "application/json" });
 			res.end(JSON.stringify(db.getUsers()));
