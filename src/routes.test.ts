@@ -1,9 +1,9 @@
 import request from "supertest";
 import 'dotenv/config';
-import { startSever } from "./server";
+import { startServer } from "./server";
 const PORT = process.env.PORT || "4000";
 
-const server = startSever(PORT);
+const server = startServer(PORT);
 
 describe("Creating users", () => {
 	let user_uuid: string;
